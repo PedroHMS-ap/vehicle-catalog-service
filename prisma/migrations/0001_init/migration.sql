@@ -1,0 +1,3 @@
+CREATE TABLE "Vehicle" ("id" TEXT NOT NULL, "brand" TEXT NOT NULL, "model" TEXT NOT NULL, "year" INTEGER NOT NULL, "color" TEXT NOT NULL, "price" DECIMAL(12,2) NOT NULL, "status" TEXT NOT NULL DEFAULT 'FOR_SALE', "buyerCpf" TEXT, "soldAt" TIMESTAMP(3), "paymentCode" TEXT NOT NULL, "paymentStatus" TEXT NOT NULL DEFAULT 'PENDING', "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL, CONSTRAINT "Vehicle_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "Vehicle_paymentCode_key" ON "Vehicle"("paymentCode");
+CREATE INDEX "Vehicle_status_price_idx" ON "Vehicle"("status", "price");

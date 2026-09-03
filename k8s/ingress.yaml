@@ -1,0 +1,13 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vehicle-catalog-ingress
+  namespace: vehicle-platform
+spec:
+  rules:
+    - host: catalog.vehicle.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: vehicle-catalog-service, port: { number: 80 } } }

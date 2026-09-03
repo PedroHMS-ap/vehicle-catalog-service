@@ -1,0 +1,52 @@
+name: Catalog CI/CD
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  packages: write
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run test:cov
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with: { name: catalog-coverage, path: coverage }
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with: { registry: ghcr.io, username: '${{ github.actor }}', password: '${{ secrets.GITHUB_TOKEN }}' }
+      - uses: docker/build-push-action@v6
+        with: { context: ., push: true, tags: 'ghcr.io/${{ github.repository }}:${{ github.sha }}' }
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: publish
+    runs-on: ubuntu-latest
+    env:
+      KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v4
+        if: env.KUBE_CONFIG_DATA != ''
+      - name: Configure kubeconfig
+        shell: bash
+        if: env.KUBE_CONFIG_DATA != ''
+        run: mkdir -p "$HOME/.kube" && echo "$KUBE_CONFIG_DATA" | base64 -d > "$HOME/.kube/config"
+      - name: Apply manifests
+        if: env.KUBE_CONFIG_DATA != ''
+        run: kubectl apply -f k8s/
+      - name: Update image
+        if: env.KUBE_CONFIG_DATA != ''
+        run: kubectl -n vehicle-platform set image deployment/vehicle-catalog-service api=ghcr.io/${{ github.repository }}:${{ github.sha }}
