@@ -15,7 +15,17 @@ jobs:
         with: { node-version: 20, cache: npm }
       - run: npm ci
       - run: npm run lint
-      - run: npm audit --omit=dev --audit-level=high
+      - name: Audit production dependencies
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            npm audit --omit=dev --audit-level=high && exit 0
+            if [ "$attempt" -lt 3 ]; then
+              echo "npm audit failed temporarily; retrying ($attempt/3)"
+              sleep 5
+            fi
+          done
+          exit 1
       - run: npm run test:cov
       - run: npm run build
       - uses: actions/upload-artifact@v4
